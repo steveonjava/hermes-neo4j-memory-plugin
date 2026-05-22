@@ -1,0 +1,16 @@
+version: "3.8"
+services:
+  neo4j:
+    image: neo4j:5.20-community
+    environment:
+      NEO4J_AUTH: "neo4j/testpassword"
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.*"
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:7474"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

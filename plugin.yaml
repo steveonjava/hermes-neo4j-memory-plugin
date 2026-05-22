@@ -1,0 +1,7 @@
+name: neo4j-memory
+version: "0.1.0"
+description: "Neo4j graph-backed long-term memory for Hermes"
+pip_dependencies:
+  - "neo4j-agent-memory>=0.4.0"
+hooks:
+  post_setup: "neo4j_memory.cli:cmd_setup"

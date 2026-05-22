@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "hermes-neo4j-memory-plugin"
+version = "0.1.0"
+description = "Neo4j graph-backed memory plugin for Hermes Agent"
+requires-python = ">=3.10"
+dependencies = [
+    "neo4j-agent-memory>=0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-mock>=3.12",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["neo4j_memory*"]
