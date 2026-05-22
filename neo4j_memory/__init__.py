@@ -154,6 +154,36 @@ class Neo4jMemoryProvider:
             return False
         return self._wrapper.is_available()
 
+    def get_config_schema(self) -> List[Dict[str, Any]]:
+        from neo4j_memory.cli import get_config_schema
+
+        return get_config_schema()
+
+    def save_config(self, values, hermes_home):
+        """Write Neo4j memory config to $HERMES_HOME/neo4j-memory.json."""
+        config_path = os.path.join(str(hermes_home), "neo4j-memory.json")
+        existing: Dict[str, Any] = {}
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, encoding="utf-8") as f:
+                    loaded = json.load(f)
+                    if isinstance(loaded, dict):
+                        existing = loaded
+            except Exception:
+                pass
+        existing.update(values or {})
+        os.makedirs(os.path.dirname(config_path), exist_ok=True)
+        with open(config_path, "w", encoding="utf-8") as f:
+            json.dump(existing, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+
+    def post_setup(self, hermes_home: str, config: dict) -> Optional[dict]:
+        """Run the Neo4j setup wizard after provider selection."""
+        from neo4j_memory.cli import cmd_setup
+
+        os.environ["HERMES_HOME"] = str(hermes_home)
+        return cmd_setup(config or {})
+
     def initialize(self, session_id: str, **kwargs) -> None:
         hermes_home = kwargs.get("hermes_home", os.path.expanduser("~/.hermes"))
         config_path = os.path.join(hermes_home, "neo4j-memory.json")

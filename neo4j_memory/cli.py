@@ -11,6 +11,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
+from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------------------------
@@ -53,6 +54,100 @@ def _write_config(cfg: dict, path: Optional[Path] = None) -> None:
         json.dumps(cfg, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
+
+
+def _validate_neo4j_uri(uri: str) -> tuple[bool, str]:
+    """Return whether *uri* is a plausible Neo4j connection URI."""
+    if not uri or not uri.strip():
+        return False, "URI is required"
+    try:
+        parsed = urlparse(uri)
+    except ValueError as exc:
+        return False, str(exc)
+    if parsed.scheme not in {
+        "bolt",
+        "bolt+s",
+        "bolt+ssc",
+        "neo4j",
+        "neo4j+s",
+        "neo4j+ssc",
+    }:
+        return (
+            False,
+            "scheme must be bolt://, bolt+s://, bolt+ssc://, neo4j://, neo4j+s://, or neo4j+ssc://",
+        )
+    if not parsed.netloc:
+        return False, "host is required"
+    return True, ""
+
+
+def _redact_secret(text: str, *secrets: str) -> str:
+    """Redact known secret values from printable error text."""
+    redacted = str(text or "")
+    for secret in secrets:
+        if secret:
+            redacted = redacted.replace(secret, "[redacted]")
+    return redacted
+
+
+def _write_memory_provider_config(provider: str = "neo4j") -> None:
+    """Set memory.provider in $HERMES_HOME/config.yaml without printing secrets."""
+    config_path = _get_hermes_home() / "config.yaml"
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    try:
+        import yaml  # type: ignore
+    except Exception:
+        yaml = None
+
+    if yaml is not None:
+        existing: dict = {}
+        if config_path.exists():
+            loaded = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                existing = loaded
+        existing.setdefault("memory", {})["provider"] = provider
+        config_path.write_text(
+            yaml.safe_dump(existing, sort_keys=False),
+            encoding="utf-8",
+        )
+        return
+
+    if not config_path.exists() or not config_path.read_text(encoding="utf-8").strip():
+        config_path.write_text(f"memory:\n  provider: {provider}\n", encoding="utf-8")
+        return
+    text = config_path.read_text(encoding="utf-8")
+    if "memory:" not in text:
+        text = text.rstrip() + f"\n\nmemory:\n  provider: {provider}\n"
+    else:
+        lines = text.splitlines()
+        memory_idx = next(
+            (idx for idx, line in enumerate(lines) if line.strip() == "memory:"), None
+        )
+        if memory_idx is None:
+            text = text.rstrip() + f"\n\nmemory:\n  provider: {provider}\n"
+            config_path.write_text(text, encoding="utf-8")
+            return
+        insert_at = memory_idx + 1
+        provider_idx = None
+        idx = memory_idx + 1
+        while idx < len(lines):
+            line = lines[idx]
+            if line and not line.startswith((" ", "\t")):
+                break
+            if line.strip().startswith("provider:"):
+                provider_idx = idx
+                break
+            idx += 1
+        if provider_idx is None:
+            lines.insert(insert_at, f"  provider: {provider}")
+        else:
+            indent = lines[provider_idx][
+                : len(lines[provider_idx]) - len(lines[provider_idx].lstrip())
+            ]
+            lines[provider_idx] = f"{indent}provider: {provider}"
+        text = "\n".join(lines) + "\n"
+    config_path.write_text(text, encoding="utf-8")
 
 
 def _prompt(label: str, default: Optional[str] = None, secret: bool = False) -> str:
@@ -249,6 +344,12 @@ def cmd_setup(args) -> Optional[dict]:
         if not new_uri:
             new_uri = "bolt://localhost:7687"
 
+        uri_ok, uri_error = _validate_neo4j_uri(new_uri)
+        if not uri_ok:
+            print(f"  Invalid Neo4j URI: {uri_error}")
+            cfg["uri"] = "bolt://localhost:7687"
+            continue
+
         current_user = cfg.get("user", "neo4j")
         new_user = _prompt("  Username", default=current_user)
         if not new_user:
@@ -328,7 +429,7 @@ def cmd_setup(args) -> Optional[dict]:
             print("  Connection successful.")
             break
         else:
-            print(f"  Connection failed: {err}")
+            print(f"  Connection failed: {_redact_secret(err, new_password)}")
             retry = _prompt("  Retry with different settings?", default="y")
             if retry.lower() not in {"y", "yes"}:
                 print("  Setup aborted. No config written.\n")
@@ -343,8 +444,19 @@ def cmd_setup(args) -> Optional[dict]:
     # Write validated config
     # -------------------------------------------------------------------------
     _write_config(candidate)
-    print(f"  Config written to {write_path}\n")
+    _write_memory_provider_config("neo4j")
+    print(f"  Config written to {write_path}")
+    print("  Memory provider set to 'neo4j' in config.yaml\n")
     return candidate
+
+
+def post_setup(
+    hermes_home: str | None = None, config: Optional[dict] = None
+) -> Optional[dict]:
+    """Hermes plugin post_setup hook entry point."""
+    if hermes_home:
+        os.environ["HERMES_HOME"] = str(hermes_home)
+    return cmd_setup(config or {})
 
 
 # ---------------------------------------------------------------------------
