@@ -28,7 +28,11 @@ class AsyncLoopThread:
         loop thread.
         """
         with self._lock:
-            if self._thread is not None and self._thread.is_alive() and self._loop is not None:
+            if (
+                self._thread is not None
+                and self._thread.is_alive()
+                and self._loop is not None
+            ):
                 return self
 
             self._loop = None
@@ -98,7 +102,9 @@ class AsyncLoopThread:
 
         if thread.is_alive() and loop.is_running():
             cleanup_timeout = max(timeout / 2.0, 0.1) if timeout is not None else None
-            cleanup_future = asyncio.run_coroutine_threadsafe(self._cancel_pending(loop), loop)
+            cleanup_future = asyncio.run_coroutine_threadsafe(
+                self._cancel_pending(loop), loop
+            )
             try:
                 cleanup_future.result(cleanup_timeout)
             except concurrent.futures.TimeoutError:
@@ -145,7 +151,11 @@ class AsyncLoopThread:
 
     async def _cancel_pending(self, loop: asyncio.AbstractEventLoop) -> None:
         current = asyncio.current_task(loop=loop)
-        pending = [task for task in asyncio.all_tasks(loop) if task is not current and not task.done()]
+        pending = [
+            task
+            for task in asyncio.all_tasks(loop)
+            if task is not current and not task.done()
+        ]
         if not pending:
             return
 

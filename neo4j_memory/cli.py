@@ -17,10 +17,12 @@ from typing import Optional
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_hermes_home() -> Path:
     """Return the active Hermes home directory."""
     try:
         from hermes_constants import get_hermes_home
+
         return get_hermes_home()
     except ImportError:
         pass
@@ -144,6 +146,7 @@ def _ensure_driver_installed() -> bool:
     """Check neo4j-agent-memory is importable; offer to install if not."""
     try:
         import neo4j_agent_memory  # noqa: F401
+
         return True
     except ImportError:
         pass
@@ -155,6 +158,7 @@ def _ensure_driver_installed() -> bool:
         return False
 
     import subprocess
+
     print("  Installing neo4j-agent-memory...", flush=True)
     result = subprocess.run(
         [sys.executable, "-m", "pip", "install", "neo4j-agent-memory>=0.4.0"],
@@ -176,9 +180,15 @@ def _smoke_test(cfg: dict) -> tuple[bool, str]:
     Returns (success: bool, error_message: str).
     """
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
-        return False, "neo4j_memory.client module not found — ensure the plugin is installed correctly"
+        return (
+            False,
+            "neo4j_memory.client module not found — ensure the plugin is installed correctly",
+        )
 
     try:
         client_cfg = Neo4jMemoryClientConfig(
@@ -202,6 +212,7 @@ def _smoke_test(cfg: dict) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 # Public wizard entry point
 # ---------------------------------------------------------------------------
+
 
 def cmd_setup(args) -> Optional[dict]:
     """Interactive Neo4j memory setup wizard.
@@ -258,12 +269,14 @@ def cmd_setup(args) -> Optional[dict]:
 
         # Build candidate config for smoke-test
         candidate = dict(cfg)
-        candidate.update({
-            "uri": new_uri,
-            "user": new_user,
-            "password": new_password,
-            "database": new_db,
-        })
+        candidate.update(
+            {
+                "uri": new_uri,
+                "user": new_user,
+                "password": new_password,
+                "database": new_db,
+            }
+        )
 
         # ----------------------------------------------------------------
         # LLM / embedding provider (needed for entity extraction)
@@ -277,12 +290,20 @@ def cmd_setup(args) -> Optional[dict]:
             )
             print(f"    Detected API keys: {providers_found}")
         else:
-            print("  WARNING: No LLM API keys detected in ~/.hermes/.env or environment.")
-            print("    Entity extraction requires an LLM — set one before using memory.")
-            print("    Supported: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, etc.")
+            print(
+                "  WARNING: No LLM API keys detected in ~/.hermes/.env or environment."
+            )
+            print(
+                "    Entity extraction requires an LLM — set one before using memory."
+            )
+            print(
+                "    Supported: ANTHROPIC_API_KEY, OPENAI_API_KEY, GROQ_API_KEY, etc."
+            )
 
         suggested_llm = _suggest_llm_provider(detected_keys)
-        current_llm = cfg.get("llm") or suggested_llm or "anthropic/claude-3-5-sonnet-latest"
+        current_llm = (
+            cfg.get("llm") or suggested_llm or "anthropic/claude-3-5-sonnet-latest"
+        )
         new_llm = _prompt("  LLM provider string", default=current_llm)
         if not new_llm:
             new_llm = current_llm
@@ -290,7 +311,9 @@ def cmd_setup(args) -> Optional[dict]:
 
         suggested_embedding = _suggest_embedding_provider(detected_keys)
         current_embedding = cfg.get("embedding") or suggested_embedding
-        new_embedding = _prompt("  Embedding provider string", default=current_embedding)
+        new_embedding = _prompt(
+            "  Embedding provider string", default=current_embedding
+        )
         if not new_embedding:
             new_embedding = current_embedding
         candidate["embedding"] = new_embedding
@@ -327,6 +350,7 @@ def cmd_setup(args) -> Optional[dict]:
 # ---------------------------------------------------------------------------
 # get_config_schema — for generic Hermes config UI
 # ---------------------------------------------------------------------------
+
 
 def get_config_schema() -> list[dict]:
     """Return config key schema compatible with the Hermes generic config UI."""

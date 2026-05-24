@@ -151,7 +151,9 @@ def test_1000_concurrent_submits_are_thread_safe():
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
-            futures = [executor.submit(bridge.submit, identity(i), 10.0) for i in range(1000)]
+            futures = [
+                executor.submit(bridge.submit, identity(i), 10.0) for i in range(1000)
+            ]
             results = [future.result(timeout=10.0) for future in futures]
     finally:
         bridge.shutdown()

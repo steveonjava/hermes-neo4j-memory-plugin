@@ -1,9 +1,9 @@
 """Neo4j memory client config and wrapper."""
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass
 
 from neo4j_memory._async_bridge import AsyncLoopThread
 
@@ -53,7 +53,8 @@ class Neo4jMemoryClientWrapper:
         except Exception as exc:
             logger.warning(
                 "Neo4j connection failed (%s: %s); memory provider will be inactive.",
-                type(exc).__name__, exc,
+                type(exc).__name__,
+                exc,
             )
             self._available = False
 
@@ -74,7 +75,9 @@ class Neo4jMemoryClientWrapper:
 
     def _require_client(self):
         if self._client is None or not self._available:
-            raise RuntimeError("Neo4j memory client is not connected. Call connect() first.")
+            raise RuntimeError(
+                "Neo4j memory client is not connected. Call connect() first."
+            )
         return self._client
 
     def _run(self, coro, timeout: float):
@@ -86,7 +89,9 @@ class Neo4jMemoryClientWrapper:
                 f"Neo4j memory operation failed ({type(exc).__name__}): {exc}"
             ) from exc
 
-    def store_fact(self, text: str, metadata: dict | None = None, timeout: float = 30.0) -> None:
+    def store_fact(
+        self, text: str, metadata: dict | None = None, timeout: float = 30.0
+    ) -> None:
         """Store a free-text fact. Maps to long_term.add_fact(subject=text, predicate='states', obj=text)."""
         client = self._require_client()
         self._run(
@@ -155,28 +160,35 @@ class Neo4jMemoryClientWrapper:
             results = []
             entities = await client.long_term.search_entities(query=query, limit=limit)
             for e in entities:
-                results.append({
-                    "type": "entity",
-                    "name": getattr(e, "display_name", None) or getattr(e, "name", str(e)),
-                    "entity_type": str(getattr(e, "type", "")),
-                    "description": getattr(e, "description", None),
-                })
+                results.append(
+                    {
+                        "type": "entity",
+                        "name": getattr(e, "display_name", None)
+                        or getattr(e, "name", str(e)),
+                        "entity_type": str(getattr(e, "type", "")),
+                        "description": getattr(e, "description", None),
+                    }
+                )
             prefs = await client.long_term.search_preferences(query=query, limit=limit)
             for p in prefs:
-                results.append({
-                    "type": "preference",
-                    "category": getattr(p, "category", None),
-                    "preference": getattr(p, "preference", str(p)),
-                })
+                results.append(
+                    {
+                        "type": "preference",
+                        "category": getattr(p, "category", None),
+                        "preference": getattr(p, "preference", str(p)),
+                    }
+                )
             try:
                 facts = await client.long_term.search_facts(query=query, limit=limit)
                 for f in facts:
-                    results.append({
-                        "type": "fact",
-                        "subject": getattr(f, "subject", None),
-                        "predicate": getattr(f, "predicate", None),
-                        "object": getattr(f, "obj", None),
-                    })
+                    results.append(
+                        {
+                            "type": "fact",
+                            "subject": getattr(f, "subject", None),
+                            "predicate": getattr(f, "predicate", None),
+                            "object": getattr(f, "obj", None),
+                        }
+                    )
             except Exception:
                 pass
             return results

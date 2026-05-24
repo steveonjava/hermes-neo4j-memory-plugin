@@ -88,7 +88,10 @@ def live_wrapper(neo4j_uri, neo4j_creds, request):
         )
 
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
         pytest.skip("neo4j_memory.client not importable — is the package installed?")
 
@@ -178,7 +181,10 @@ def test_wrapper_unavailable_on_bad_uri(request):
         pytest.skip("Integration tests disabled")
 
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
         pytest.skip("neo4j_memory.client not importable")
 
@@ -260,7 +266,10 @@ def test_provider_handle_store_fact(live_provider):
     try:
         result = live_provider.handle_tool_call(
             "neo4j_store_fact",
-            {"text": "integration test fact from provider", "metadata": {"ts": str(time.time())}},
+            {
+                "text": "integration test fact from provider",
+                "metadata": {"ts": str(time.time())},
+            },
         )
         assert result == ""
     except RuntimeError as exc:
@@ -407,7 +416,10 @@ def test_close_then_operations_raise(live_wrapper, request, neo4j_uri, neo4j_cre
         pytest.skip("Integration tests disabled")
 
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
         pytest.skip("neo4j_memory.client not importable")
 
@@ -438,7 +450,10 @@ def test_two_independent_wrappers_do_not_interfere(request, neo4j_uri, neo4j_cre
         pytest.skip("Integration tests disabled")
 
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
         pytest.skip("neo4j_memory.client not importable")
 
@@ -493,7 +508,10 @@ def test_connect_to_missing_neo4j_sets_unavailable(request):
         pytest.skip("Integration tests disabled")
 
     try:
-        from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrapper
+        from neo4j_memory.client import (
+            Neo4jMemoryClientConfig,
+            Neo4jMemoryClientWrapper,
+        )
     except ImportError:
         pytest.skip("neo4j_memory.client not importable")
 

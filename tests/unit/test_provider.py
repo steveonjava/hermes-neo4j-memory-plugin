@@ -1,4 +1,5 @@
 """Unit tests for Neo4jMemoryProvider."""
+
 from __future__ import annotations
 
 import json
@@ -137,12 +138,14 @@ def test_initialize_applies_env_overrides(mock_wrapper_cls, tmp_path, monkeypatc
 def test_initialize_reads_config_file(mock_wrapper_cls, tmp_path):
     MockCls, _ = mock_wrapper_cls
     (tmp_path / "neo4j-memory.json").write_text(
-        json.dumps({
-            "uri": "bolt://from-file:7687",
-            "user": "bob",
-            "password": "filepass",
-            "database": "filedb",
-        })
+        json.dumps(
+            {
+                "uri": "bolt://from-file:7687",
+                "user": "bob",
+                "password": "filepass",
+                "database": "filedb",
+            }
+        )
     )
     provider = Neo4jMemoryProvider()
     provider.initialize("sess1", hermes_home=str(tmp_path))

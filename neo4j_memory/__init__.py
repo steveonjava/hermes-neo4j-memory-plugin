@@ -1,4 +1,5 @@
 """Neo4j graph-backed memory provider for Hermes."""
+
 from __future__ import annotations
 
 import json
@@ -68,9 +69,7 @@ STORE_ENTITY_SCHEMA = {
 
 STORE_PREFERENCE_SCHEMA = {
     "name": "neo4j_store_preference",
-    "description": (
-        "Store a user preference in the Neo4j long-term memory graph."
-    ),
+    "description": ("Store a user preference in the Neo4j long-term memory graph."),
     "parameters": {
         "type": "object",
         "properties": {

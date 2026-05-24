@@ -1,9 +1,10 @@
 """Unit tests for Neo4jMemoryClientWrapper."""
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from unittest.mock import AsyncMock, MagicMock, patch, call
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -12,8 +13,10 @@ from neo4j_memory.client import Neo4jMemoryClientConfig, Neo4jMemoryClientWrappe
 
 def make_sync_submit(loop=None):
     """Return a submit() that runs coroutines synchronously via asyncio.run()."""
+
     def submit(coro, timeout=30.0):
         return asyncio.run(coro)
+
     return submit
 
 
@@ -34,7 +37,9 @@ def mock_neo4j_lib():
     mock_client.get_context = AsyncMock(return_value="ctx")
     mock_client.long_term = MagicMock()
     mock_client.long_term.add_fact = AsyncMock(return_value=MagicMock())
-    mock_client.long_term.add_entity = AsyncMock(return_value=(MagicMock(), MagicMock()))
+    mock_client.long_term.add_entity = AsyncMock(
+        return_value=(MagicMock(), MagicMock())
+    )
     mock_client.long_term.add_preference = AsyncMock(return_value=MagicMock())
     mock_client.long_term.search_entities = AsyncMock(return_value=[])
     mock_client.long_term.search_preferences = AsyncMock(return_value=[])
@@ -49,15 +54,20 @@ def mock_neo4j_lib():
         thread_instance.submit.side_effect = make_sync_submit()
         MockThread.return_value = thread_instance
 
-        with patch.dict("sys.modules", {
-            "neo4j_agent_memory": MagicMock(
-                MemoryClient=mock_memory_client_cls,
-                MemorySettings=mock_settings_cls,
-            ),
-            "neo4j_agent_memory.config": MagicMock(),
-            "neo4j_agent_memory.config.settings": MagicMock(Neo4jConfig=mock_neo4j_config_cls),
-            "pydantic": MagicMock(SecretStr=lambda x: x),
-        }):
+        with patch.dict(
+            "sys.modules",
+            {
+                "neo4j_agent_memory": MagicMock(
+                    MemoryClient=mock_memory_client_cls,
+                    MemorySettings=mock_settings_cls,
+                ),
+                "neo4j_agent_memory.config": MagicMock(),
+                "neo4j_agent_memory.config.settings": MagicMock(
+                    Neo4jConfig=mock_neo4j_config_cls
+                ),
+                "pydantic": MagicMock(SecretStr=lambda x: x),
+            },
+        ):
             yield {
                 "thread": thread_instance,
                 "client": mock_client,
@@ -112,7 +122,9 @@ def test_connect_failure_does_not_raise(mock_neo4j_lib, caplog):
     with caplog.at_level(logging.WARNING):
         w.connect()  # should not raise
     assert w.is_available() is False
-    assert "connection refused" in caplog.text or "Neo4j connection failed" in caplog.text
+    assert (
+        "connection refused" in caplog.text or "Neo4j connection failed" in caplog.text
+    )
 
 
 # 5. store_fact calls long_term.add_fact with correct mapping
@@ -179,8 +191,12 @@ def test_search_aggregates(mock_neo4j_lib):
     fact.predicate = "knows"
     fact.obj = "sky is blue"
 
-    mock_neo4j_lib["client"].long_term.search_entities = AsyncMock(return_value=[entity])
-    mock_neo4j_lib["client"].long_term.search_preferences = AsyncMock(return_value=[pref])
+    mock_neo4j_lib["client"].long_term.search_entities = AsyncMock(
+        return_value=[entity]
+    )
+    mock_neo4j_lib["client"].long_term.search_preferences = AsyncMock(
+        return_value=[pref]
+    )
     mock_neo4j_lib["client"].long_term.search_facts = AsyncMock(return_value=[fact])
 
     w = make_wrapper()
@@ -206,7 +222,9 @@ def test_get_context(mock_neo4j_lib):
 
 # 10. Library exception wraps to RuntimeError
 def test_store_fact_wraps_exception(mock_neo4j_lib):
-    mock_neo4j_lib["client"].long_term.add_fact = AsyncMock(side_effect=ValueError("db error"))
+    mock_neo4j_lib["client"].long_term.add_fact = AsyncMock(
+        side_effect=ValueError("db error")
+    )
     w = make_wrapper()
     w.connect()
     with pytest.raises(RuntimeError, match="Neo4j memory operation failed"):

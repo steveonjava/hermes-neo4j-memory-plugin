@@ -5,17 +5,14 @@ from __future__ import annotations
 import io
 import json
 import os
-import sys
-import tempfile
-from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import patch
 
-import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_inputs(*lines: str) -> io.StringIO:
     """Build a StringIO that feeds successive readline() calls."""
@@ -26,6 +23,7 @@ def _make_inputs(*lines: str) -> io.StringIO:
 # Happy path
 # ---------------------------------------------------------------------------
 
+
 class TestCmdSetupHappyPath:
     def test_returns_config_dict_and_writes_file(self, tmp_path):
         """cmd_setup returns the written config dict on success."""
@@ -33,11 +31,11 @@ class TestCmdSetupHappyPath:
 
         inputs = _make_inputs(
             "bolt://localhost:7687",  # URI
-            "neo4j",                  # username
-            "s3cr3t",                 # password
-            "neo4j",                  # database
+            "neo4j",  # username
+            "s3cr3t",  # password
+            "neo4j",  # database
             "anthropic/claude-3-5-sonnet-latest",  # LLM
-            "openai/text-embedding-3-small",        # embedding
+            "openai/text-embedding-3-small",  # embedding
         )
 
         with (
@@ -48,6 +46,7 @@ class TestCmdSetupHappyPath:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is not None
@@ -72,6 +71,7 @@ class TestCmdSetupHappyPath:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is None
@@ -81,6 +81,7 @@ class TestCmdSetupHappyPath:
 # Connection failure → retry → success
 # ---------------------------------------------------------------------------
 
+
 class TestConnectionRetry:
     def test_reprompts_on_failure_then_succeeds(self, tmp_path):
         """On first connection failure the wizard loops back; success on retry."""
@@ -89,12 +90,12 @@ class TestConnectionRetry:
         inputs = _make_inputs(
             # --- First attempt ---
             "bolt://localhost:7687",  # URI
-            "neo4j",                  # username
-            "wrong-pass",             # bad password
-            "neo4j",                  # database
+            "neo4j",  # username
+            "wrong-pass",  # bad password
+            "neo4j",  # database
             "anthropic/claude-3-5-sonnet-latest",
             "openai/text-embedding-3-small",
-            "y",                      # retry?
+            "y",  # retry?
             # --- Second attempt ---
             "bolt://localhost:7687",
             "neo4j",
@@ -105,7 +106,6 @@ class TestConnectionRetry:
         )
 
         smoke_results = [(False, "Auth failed"), (True, "")]
-        smoke_iter = iter(smoke_results)
 
         with (
             patch("neo4j_memory.cli._get_hermes_home", return_value=tmp_path),
@@ -115,6 +115,7 @@ class TestConnectionRetry:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is not None
@@ -135,11 +136,15 @@ class TestConnectionRetry:
         with (
             patch("neo4j_memory.cli._get_hermes_home", return_value=tmp_path),
             patch("neo4j_memory.cli._ensure_driver_installed", return_value=True),
-            patch("neo4j_memory.cli._smoke_test", return_value=(False, "Connection refused")),
+            patch(
+                "neo4j_memory.cli._smoke_test",
+                return_value=(False, "Connection refused"),
+            ),
             patch("sys.stdin", inputs),
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is None
@@ -150,6 +155,7 @@ class TestConnectionRetry:
 # ---------------------------------------------------------------------------
 # LLM key detection
 # ---------------------------------------------------------------------------
+
 
 class TestLLMKeyWarning:
     def test_warning_printed_when_no_llm_key_present(self, tmp_path):
@@ -179,19 +185,26 @@ class TestLLMKeyWarning:
         ):
             # Remove any LLM keys that might be in actual environment
             clean_env = {
-                k: v for k, v in os.environ.items()
-                if k not in {
-                    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY",
-                    "COHERE_API_KEY", "TOGETHER_API_KEY", "MISTRAL_API_KEY", "LM_API_KEY"
+                k: v
+                for k, v in os.environ.items()
+                if k
+                not in {
+                    "ANTHROPIC_API_KEY",
+                    "OPENAI_API_KEY",
+                    "GROQ_API_KEY",
+                    "COHERE_API_KEY",
+                    "TOGETHER_API_KEY",
+                    "MISTRAL_API_KEY",
+                    "LM_API_KEY",
                 }
             }
             with patch.dict(os.environ, clean_env, clear=True):
-                from neo4j_memory import cli as cli_mod
+                from neo4j_memory import cli as cli_mod  # noqa: F401
+
                 # Reset the module's detection function to use cleaned env
-                detected = cli_mod._detect_llm_keys.__wrapped__() if hasattr(
-                    cli_mod._detect_llm_keys, "__wrapped__") else {}
                 with patch("neo4j_memory.cli._detect_llm_keys", return_value={}):
                     from neo4j_memory.cli import cmd_setup
+
                     cmd_setup(SimpleNamespace())
 
         output = captured.getvalue()
@@ -214,12 +227,15 @@ class TestLLMKeyWarning:
             patch("neo4j_memory.cli._get_hermes_home", return_value=tmp_path),
             patch("neo4j_memory.cli._ensure_driver_installed", return_value=True),
             patch("neo4j_memory.cli._smoke_test", return_value=(True, "")),
-            patch("neo4j_memory.cli._detect_llm_keys",
-                  return_value={"anthropic": "ANTHROPIC_API_KEY"}),
+            patch(
+                "neo4j_memory.cli._detect_llm_keys",
+                return_value={"anthropic": "ANTHROPIC_API_KEY"},
+            ),
             patch("sys.stdin", inputs),
             patch("sys.stdout", captured),
         ):
             from neo4j_memory.cli import cmd_setup
+
             cmd_setup(SimpleNamespace())
 
         output = captured.getvalue()
@@ -229,6 +245,7 @@ class TestLLMKeyWarning:
 # ---------------------------------------------------------------------------
 # Defaults and edge cases
 # ---------------------------------------------------------------------------
+
 
 class TestInputEdgeCases:
     def test_accepts_empty_input_uses_defaults(self, tmp_path):
@@ -251,6 +268,7 @@ class TestInputEdgeCases:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is not None
@@ -282,6 +300,7 @@ class TestInputEdgeCases:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         # Empty password input with existing password should keep existing
@@ -309,6 +328,7 @@ class TestInputEdgeCases:
             patch("sys.stdout", new_callable=io.StringIO),
         ):
             from neo4j_memory.cli import cmd_setup
+
             result = cmd_setup(SimpleNamespace())
 
         assert result is None
@@ -319,9 +339,11 @@ class TestInputEdgeCases:
 # get_config_schema
 # ---------------------------------------------------------------------------
 
+
 class TestGetConfigSchema:
     def test_schema_has_required_keys(self):
         from neo4j_memory.cli import get_config_schema
+
         schema = get_config_schema()
         keys = {entry["key"] for entry in schema}
         assert "uri" in keys
@@ -331,12 +353,14 @@ class TestGetConfigSchema:
 
     def test_password_is_secret(self):
         from neo4j_memory.cli import get_config_schema
+
         schema = get_config_schema()
         pw = next(e for e in schema if e["key"] == "password")
         assert pw.get("secret") is True
 
     def test_env_var_annotations_present(self):
         from neo4j_memory.cli import get_config_schema
+
         schema = get_config_schema()
         for entry in schema:
             if entry["key"] in {"uri", "user", "password", "database"}:
