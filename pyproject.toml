@@ -21,3 +21,10 @@ dev = [
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["neo4j_memory*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "strict"
+markers = [
+    "integration: marks tests that require a live Neo4j instance (deselect with '-m not integration')",
+]
+addopts = "-m 'not integration'"
