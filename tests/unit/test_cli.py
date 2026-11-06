@@ -365,3 +365,58 @@ class TestGetConfigSchema:
         for entry in schema:
             if entry["key"] in {"uri", "user", "password", "database"}:
                 assert "env_var" in entry, f"Missing env_var on {entry['key']}"
+
+
+# ---------------------------------------------------------------------------
+# Closed stdin
+# ---------------------------------------------------------------------------
+
+
+class _BoundedEofStdin(io.StringIO):
+    """StringIO that fails the test if the wizard keeps reading past EOF."""
+
+    def __init__(self, text, max_eof_reads=20):
+        super().__init__(text)
+        self.eof_reads = 0
+        self._max = max_eof_reads
+
+    def readline(self, *args):
+        line = super().readline(*args)
+        if line == "":
+            self.eof_reads += 1
+            assert self.eof_reads <= self._max, "wizard kept reading after EOF"
+        return line
+
+
+class TestCmdSetupClosedInput:
+    def test_aborts_instead_of_looping_when_input_runs_out(self, tmp_path):
+        """A failed smoke test followed by EOF must end the wizard, not spin."""
+        stdin = _BoundedEofStdin(
+            "\n".join(
+                [
+                    "bolt://localhost:7687",  # URI
+                    "neo4j",  # username
+                    "s3cr3t",  # password
+                    "neo4j",  # database
+                    "anthropic/claude-3-5-sonnet-latest",  # LLM
+                    "openai/text-embedding-3-small",  # embedding
+                ]
+            )
+            + "\n"
+        )
+
+        with (
+            patch("neo4j_memory.cli._get_hermes_home", return_value=tmp_path),
+            patch("neo4j_memory.cli._ensure_driver_installed", return_value=True),
+            patch("neo4j_memory.cli._smoke_test", return_value=(False, "refused")),
+            patch("sys.stdin", stdin),
+            patch("sys.stdout", new_callable=io.StringIO) as out,
+        ):
+            from neo4j_memory.cli import cmd_setup
+
+            result = cmd_setup(SimpleNamespace())
+
+        assert result is None
+        assert stdin.eof_reads == 1
+        assert not (tmp_path / "neo4j-memory.json").exists()
+        assert "input closed" in out.getvalue()

@@ -159,10 +159,22 @@ def _prompt(label: str, default: Optional[str] = None, secret: bool = False) -> 
             val = getpass.getpass(prompt="")
         else:
             # Non-TTY (piped input, test runners) — read plaintext
-            val = sys.stdin.readline().strip()
+            val = _read_line()
     else:
-        val = sys.stdin.readline().strip()
+        val = _read_line()
     return val or (default or "")
+
+
+def _read_line() -> str:
+    """Read one line from stdin; raise EOFError once input is exhausted.
+
+    readline() returns "" forever at EOF, which the retry loop in cmd_setup
+    would treat as an empty answer and spin on indefinitely.
+    """
+    line = sys.stdin.readline()
+    if line == "":
+        raise EOFError("input closed")
+    return line.strip()
 
 
 def _detect_llm_keys() -> dict[str, str]:
@@ -309,7 +321,7 @@ def _smoke_test(cfg: dict) -> tuple[bool, str]:
 # ---------------------------------------------------------------------------
 
 
-def cmd_setup(args) -> Optional[dict]:
+def _cmd_setup(args) -> Optional[dict]:
     """Interactive Neo4j memory setup wizard.
 
     Prompts for connection details, detects existing API keys, smoke-tests the
@@ -448,6 +460,15 @@ def cmd_setup(args) -> Optional[dict]:
     print(f"  Config written to {write_path}")
     print("  Memory provider set to 'neo4j' in config.yaml\n")
     return candidate
+
+
+def cmd_setup(args) -> Optional[dict]:
+    """Run the setup wizard; abort cleanly if stdin closes mid-prompt."""
+    try:
+        return _cmd_setup(args)
+    except EOFError:
+        print("\n  Setup aborted: input closed. No config written.\n")
+        return None
 
 
 def post_setup(
