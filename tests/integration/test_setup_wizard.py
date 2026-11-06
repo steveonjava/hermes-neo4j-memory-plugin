@@ -79,6 +79,17 @@ def _wizard_inputs(
     return "\n".join([uri, user, password, database, llm, embedding, ""]) + "\n"
 
 
+def _skip_if_embedding_unavailable(result, output):
+    """Skip when the wizard's smoke test needs an embedding provider the env lacks.
+
+    The smoke test calls get_context(), which generates an embedding. Without the
+    provider package or an API key that fails regardless of Neo4j connectivity, so
+    treat it like the other live tests do: skip, don't fail.
+    """
+    if result is None and "embedding" in output.lower():
+        pytest.skip("Embedding provider unavailable in test env")
+
+
 def _run_wizard(clean_config, uri, user, password, smoke_ok=True, smoke_err=""):
     """Run cmd_setup with patched stdin, stdout, hermes_home, and smoke test."""
     inputs = _wizard_inputs(uri, user, password)
@@ -404,13 +415,14 @@ def test_full_wizard_live_connection(clean_config, neo4j_test_uri, request):
         patch("neo4j_memory.cli._get_hermes_home", return_value=clean_config),
         patch("neo4j_memory.cli._ensure_driver_installed", return_value=True),
         patch("sys.stdin", io.StringIO(inputs)),
-        patch("sys.stdout", new_callable=io.StringIO),
+        patch("sys.stdout", new_callable=io.StringIO) as out,
     ):
         # Use the real _smoke_test — exercises actual Neo4j connectivity.
         from neo4j_memory.cli import cmd_setup
 
         result = cmd_setup(SimpleNamespace())
 
+    _skip_if_embedding_unavailable(result, out.getvalue())
     assert result is not None, (
         f"cmd_setup returned None — wizard failed. "
         f"Is Neo4j reachable at {neo4j_test_uri}?"
@@ -441,12 +453,13 @@ def test_live_wizard_provider_is_available_post_setup(
         patch("neo4j_memory.cli._get_hermes_home", return_value=clean_config),
         patch("neo4j_memory.cli._ensure_driver_installed", return_value=True),
         patch("sys.stdin", io.StringIO(inputs)),
-        patch("sys.stdout", new_callable=io.StringIO),
+        patch("sys.stdout", new_callable=io.StringIO) as out,
     ):
         from neo4j_memory.cli import cmd_setup
 
         result = cmd_setup(SimpleNamespace())
 
+    _skip_if_embedding_unavailable(result, out.getvalue())
     assert result is not None
 
     try:
