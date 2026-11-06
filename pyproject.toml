@@ -29,3 +29,9 @@ markers = [
     "integration: marks tests that require a live Neo4j instance (deselect with '-m not integration')",
 ]
 addopts = "-m 'not integration'"
+
+[tool.ruff.lint]
+# Name the rule set explicitly. CI installs the latest ruff, and its default
+# selection changes between releases; this keeps the original intent
+# (pyflakes plus core pycodestyle) independent of the installed version.
+select = ["E4", "E7", "E9", "F"]

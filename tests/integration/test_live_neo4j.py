@@ -32,19 +32,6 @@ import pytest
 NEO4J_TEST_URI = os.environ.get("NEO4J_TEST_URI", "")
 
 
-def pytest_addoption(parser):
-    """Register --run-integration flag (safe to call multiple times)."""
-    try:
-        parser.addoption(
-            "--run-integration",
-            action="store_true",
-            default=False,
-            help="Run integration tests (requires a live Neo4j instance)",
-        )
-    except ValueError:
-        pass  # Already registered by another conftest
-
-
 def _integration_enabled(config) -> bool:
     return bool(
         NEO4J_TEST_URI
